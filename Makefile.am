@@ -10,7 +10,8 @@ bin_PROGRAMS = \
 	simple/fi_ud_pingpong \
 	unit/fi_eq_test \
 	unit/fi_av_test \
-	ported/libibverbs/fi_rc_pingpong
+	ported/libibverbs/fi_rc_pingpong \
+	unit/include
 
 simple_fi_info_SOURCES = \
 	simple/info.c \
@@ -51,6 +52,9 @@ unit_fi_av_test_SOURCES = \
 
 ported_libibverbs_fi_rc_pingpong_SOURCES = \
 	ported/libibverbs/rc_pingpong.c
+
+unit_include_SOURCES = \
+	unit/include.c
 
 man_MANS = man/fabtests.7
 
