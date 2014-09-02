@@ -1,4 +1,5 @@
 AM_CFLAGS = -g -Wall -D_GNU_SOURCE -I$(srcdir)/include
+AM_CPPFLAGS = -Icommon
 
 bin_PROGRAMS = \
 	simple/fi_info \
@@ -11,6 +12,7 @@ bin_PROGRAMS = \
 	unit/fi_eq_test \
 	unit/fi_av_test \
 	ported/libibverbs/fi_rc_pingpong \
+	unit/provinfo \
 	unit/include
 
 simple_fi_info_SOURCES = \
@@ -52,6 +54,10 @@ unit_fi_av_test_SOURCES = \
 
 ported_libibverbs_fi_rc_pingpong_SOURCES = \
 	ported/libibverbs/rc_pingpong.c
+
+unit_provinfo_SOURCES = \
+	unit/provinfo.c \
+	common/shared.c
 
 unit_include_SOURCES = \
 	unit/include.c
