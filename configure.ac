@@ -44,6 +44,8 @@ AC_ARG_WITH([libfabric],
 dnl Checks for libraries
 AC_CHECK_LIB([fabric], fi_getinfo, [],
     AC_MSG_ERROR([fi_getinfo() not found.  fabtests requires libfabric.]))
+AC_SEARCH_LIBS([clock_gettime], [rt], [],
+    AC_MSG_ERROR([clock_gettime(2) not found in libc or librt.  fabtests requires clock_gettime(2).]))
 
 dnl Checks for header files.
 AC_HEADER_STDC
