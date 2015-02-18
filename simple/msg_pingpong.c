@@ -277,7 +277,11 @@ static int server_listen(void)
 	struct fi_info *fi;
 	int ret;
 
-	ret = fi_getinfo(FT_FIVERSION, opts.src_addr, opts.src_port, FI_SOURCE,
+	ret = ft_getsrcaddr(opts.src_addr, opts.src_port, &hints);
+	if (ret)
+		return ret;
+
+	ret = fi_getinfo(FT_FIVERSION, NULL, NULL, FI_SOURCE,
 			&hints, &fi);
 	if (ret) {
 		FT_PRINTERR("fi_getinfo", ret);
@@ -311,6 +315,12 @@ static int server_listen(void)
 		FT_PRINTERR("fi_listen", ret);
 		goto err3;
 	}
+
+	struct sockaddr_in l_addr;
+	size_t addrlen = 16;
+
+	fi_getname(&pep->fid, &l_addr, &addrlen);
+	FT_DEBUG("BEFORE fi_getname() port number %hu\n", ntohs(l_addr.sin_port));
 
 	fi_freeinfo(fi);
 	return 0;
@@ -385,6 +395,14 @@ static int server_connect(void)
 		goto err3;
 	}
 
+	struct sockaddr_in l_addr, r_addr;
+	size_t addrlen = 16;
+
+	fi_getpeer(ep, &r_addr, &addrlen);
+	fi_getname(&ep->fid, &l_addr, &addrlen);
+	FT_DEBUG("AFTER fi_getname() port number %hu\n", ntohs(l_addr.sin_port));
+	FT_DEBUG("AFTER fi_getpeer() port number %hu\n", ntohs(r_addr.sin_port));
+
 	fi_close(&pep->fid);
 
 	fi_freeinfo(info);
@@ -413,7 +431,11 @@ static int client_connect(void)
 	if (ret)
 		return ret;
 
-	ret = fi_getinfo(FT_FIVERSION, opts.dst_addr, opts.dst_port, 0, &hints, &fi);
+	ret = ft_getdestaddr(opts.dst_addr, opts.dst_port, &hints);
+	if (ret)
+		return ret;
+
+	ret = fi_getinfo(FT_FIVERSION, NULL, NULL, 0, &hints, &fi);
 	if (ret) {
 		FT_PRINTERR("fi_getinfo", ret);
 		goto err0;
@@ -473,6 +495,14 @@ static int client_connect(void)
 		ret = -FI_EOTHER;
 		goto err5;
 	}
+
+	struct sockaddr_in l_addr, r_addr;
+	size_t addrlen = 16;
+
+	fi_getpeer(ep, &r_addr, &addrlen);
+	fi_getname(&ep->fid, &l_addr, &addrlen);
+	FT_DEBUG("fi_getname() port number %hu\n", ntohs(l_addr.sin_port));
+	FT_DEBUG("fi_getpeer() port number %hu\n", ntohs(r_addr.sin_port));
 
 	if (hints.src_addr)
 		free(hints.src_addr);
