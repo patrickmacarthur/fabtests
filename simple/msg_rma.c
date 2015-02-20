@@ -171,6 +171,33 @@ static int sync_test(void)
 	return opts.dst_addr ? recv_xfer(16) : send_xfer(16);
 }
 
+static int remote_writedata_completion(void)
+{
+	struct fi_cq_entry comp;
+	int ret;
+
+	do {
+		ret = fi_cq_read(rcq, &comp, 1);
+		if (ret < 0) {
+			if (ret == -FI_EAVAIL) {
+				cq_readerr(rcq, "rcq");
+			} else {
+				FT_PRINTERR("fi_cq_read", ret);
+			}
+			return ret;
+		}
+	} while (!ret);
+
+	if (comp.op_context == buf) {
+		/* We need to repost the receive */
+		ret = fi_recv(ep, buf, buffer_size, fi_mr_desc(mr), 0, buf);
+		if (ret)
+			FT_PRINTERR("fi_recv", ret);
+	}
+
+	return ret;
+}
+
 static int run_test(void)
 {
 	int ret, i;
@@ -188,7 +215,7 @@ static int run_test(void)
 			if (ret)
 				return ret;
 			FT_DEBUG("wait for remote writedata completion\n");
-			ret = wait_for_completion(rcq, 1);
+			ret = remote_writedata_completion();
 		} else {
 			ret = read_data(opts.transfer_size); 
 		}
