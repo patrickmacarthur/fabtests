@@ -119,7 +119,7 @@ static int read_data(size_t size)
 	int ret;
 
 	ret = fi_read(ep, buf, size, fi_mr_desc(mr), 
-		      0, remote.addr, remote.key, NULL);
+		      0, remote.addr, remote.key, ep);
 	if (ret) {
 		FT_PRINTERR("fi_read", ret);
 		return ret;
@@ -132,7 +132,6 @@ static int write_data_with_cq_data(size_t size)
 {
 	int ret;
 
-	FT_DEBUG("calling fi_writedata\n");
 	ret = fi_writedata(ep, buf, size, fi_mr_desc(mr),
 		       cq_data, 0, remote.addr, remote.key, ep);
 	if (ret) {
@@ -147,7 +146,7 @@ static int write_data(size_t size)
 	int ret;
 
 	ret = fi_write(ep, buf, size, fi_mr_desc(mr),  
-		       0, remote.addr, remote.key, NULL);
+		       0, remote.addr, remote.key, ep);
 	if (ret) {
 		FT_PRINTERR("fi_write", ret);
 		return ret;
@@ -173,12 +172,11 @@ static int sync_test(void)
 	return opts.dst_addr ? recv_xfer(16) : send_xfer(16);
 }
 
-static int remote_writedata_completion(void)
+static int wait_remote_writedata_completion(void)
 {
 	struct fi_cq_data_entry comp;
 	int ret;
 
-	FT_DEBUG("wait for remote writedata completion\n");
 	do {
 		ret = fi_cq_read(rcq, &comp, 1);
 		if (ret < 0) {
@@ -229,7 +227,7 @@ static int run_test(void)
 			ret = write_data_with_cq_data(opts.transfer_size);
 			if (ret)
 				return ret;
-			ret = remote_writedata_completion();
+			ret = wait_remote_writedata_completion();
 			break;
 		case FT_RMA_READ:
 			ret = read_data(opts.transfer_size); 
