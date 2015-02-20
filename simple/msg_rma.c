@@ -178,6 +178,7 @@ static int remote_writedata_completion(void)
 	struct fi_cq_data_entry comp;
 	int ret;
 
+	FT_DEBUG("wait for remote writedata completion\n");
 	do {
 		ret = fi_cq_read(rcq, &comp, 1);
 		if (ret < 0) {
@@ -226,7 +227,6 @@ static int run_test(void)
 			ret = write_data_with_cq_data(opts.transfer_size);
 			if (ret)
 				return ret;
-			FT_DEBUG("wait for remote writedata completion\n");
 			ret = remote_writedata_completion();
 		} else {
 			ret = read_data(opts.transfer_size); 
