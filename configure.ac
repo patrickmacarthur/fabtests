@@ -10,7 +10,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 dnl Fix autoconf's habit of adding -g -O2 by default
 AS_IF([test -z "$CFLAGS"],
-      [CFLAGS='-O2 -DNDEBUG -Wall'])
+      [CFLAGS='-O2 -Wall'])
 
 # AM PROG_AR did not exist pre AM 1.11.x (where x is somewhere >0 and
 # <3), but it is necessary in AM 1.12.x.
@@ -49,6 +49,7 @@ AC_SEARCH_LIBS([clock_gettime], [rt], [],
 
 dnl Checks for header files.
 AC_HEADER_STDC
+AC_HEADER_ASSERT
 AC_CHECK_HEADER([rdma/fabric.h], [],
     [AC_MSG_ERROR([<rdma/fabric.h> not found.  fabtests requires libfabric.])])
 
