@@ -83,7 +83,7 @@ static int send_xfer(int size)
 
 	credits--;
 post:
-	ret = fi_send(ep, buf, (size_t) size, fi_mr_desc(mr), 0, NULL);
+	ret = fi_send(ep, buf, (size_t) size, fi_mr_desc(mr), 0, ep);
 	if (ret)
 		FT_PRINTERR("fi_send", ret);
 
@@ -134,7 +134,7 @@ static int write_data_with_cq_data(size_t size)
 
 	FT_DEBUG("calling fi_writedata\n");
 	ret = fi_writedata(ep, buf, size, fi_mr_desc(mr),
-		       cq_data, 0, remote.addr, remote.key, NULL);
+		       cq_data, 0, remote.addr, remote.key, ep);
 	if (ret) {
 		FT_PRINTERR("fi_writedata", ret);
 		return ret;
@@ -200,7 +200,12 @@ static int remote_writedata_completion(void)
 		ret = fi_recv(ep, buf, buffer_size, fi_mr_desc(mr), 0, buf);
 		if (ret)
 			FT_PRINTERR("fi_recv", ret);
+	} else if (comp.op_context != NULL) {
+		FT_DEBUG("comp.op_context == %p\n", comp.op_context);
+		FT_DEBUG("ep == %p\n", (void *)ep);
+		FT_DEBUG("buf == %p\n", (void *)buf);
 	}
+	assert(comp.op_context == buf || comp.op_context == NULL);
 
 	return ret;
 }
