@@ -26,6 +26,7 @@
  * SOFTWARE.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,6 +50,7 @@ static struct timespec start, end;
 static void *buf;
 static size_t buffer_size;
 struct fi_rma_iov local, remote;
+static uint64_t cq_data = 1;
 
 static struct fi_info hints;
 
@@ -62,7 +64,7 @@ static struct fid_mr *mr;
 
 static int send_xfer(int size)
 {
-	struct fi_cq_entry comp;
+	struct fi_cq_data_entry comp;
 	int ret;
 
 	while (!credits) {
@@ -90,7 +92,7 @@ post:
 
 static int recv_xfer(int size)
 {
-	struct fi_cq_entry comp;
+	struct fi_cq_data_entry comp;
 	int ret;
 
 	do {
@@ -126,7 +128,7 @@ static int read_data(size_t size)
 	return 0;
 }
 
-static int write_data_with_cq_data(size_t size, uint64_t cq_data)
+static int write_data_with_cq_data(size_t size)
 {
 	int ret;
 
@@ -157,7 +159,7 @@ static int sync_test(void)
 {
 	int ret;
 
-	ret = wait_for_completion(scq, max_credits - credits);
+	ret = wait_for_data_completion(scq, max_credits - credits);
 	if (ret) {
 		return ret;
 	}
@@ -173,7 +175,7 @@ static int sync_test(void)
 
 static int remote_writedata_completion(void)
 {
-	struct fi_cq_entry comp;
+	struct fi_cq_data_entry comp;
 	int ret;
 
 	do {
@@ -188,6 +190,11 @@ static int remote_writedata_completion(void)
 		}
 	} while (!ret);
 
+	ret = 0;
+	if (comp.data != cq_data) {
+		FT_DEBUG("Got unexpected completion data %" PRIu64 "\n", comp.data);
+		exit(EXIT_FAILURE);
+	}
 	if (comp.op_context == buf) {
 		/* We need to repost the receive */
 		ret = fi_recv(ep, buf, buffer_size, fi_mr_desc(mr), 0, buf);
@@ -211,7 +218,7 @@ static int run_test(void)
 		if (op_type == FI_REMOTE_WRITE) {
 			ret = write_data(opts.transfer_size);
 		} else if (op_type == (FI_REMOTE_WRITE|FI_REMOTE_CQ_DATA)) {
-			ret = write_data_with_cq_data(opts.transfer_size, 0);
+			ret = write_data_with_cq_data(opts.transfer_size);
 			if (ret)
 				return ret;
 			FT_DEBUG("wait for remote writedata completion\n");
@@ -221,7 +228,7 @@ static int run_test(void)
 		}
 		if (ret)
 			return ret;
-		ret = wait_for_completion(scq, 1);
+		ret = wait_for_data_completion(scq, 1);
 		if (ret)
 			return ret;
 	}
@@ -278,7 +285,7 @@ static int alloc_ep_res(struct fi_info *fi)
 	}
 
 	memset(&cq_attr, 0, sizeof cq_attr);
-	cq_attr.format = FI_CQ_FORMAT_CONTEXT;
+	cq_attr.format = FI_CQ_FORMAT_DATA;
 	cq_attr.wait_obj = FI_WAIT_NONE;
 	cq_attr.size = max_credits << 1;
 	ret = fi_cq_open(dom, &cq_attr, &scq, NULL);
