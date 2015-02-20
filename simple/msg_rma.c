@@ -126,6 +126,19 @@ static int read_data(size_t size)
 	return 0;
 }
 
+static int write_data_with_cq_data(size_t size, uint64_t cq_data)
+{
+	int ret;
+
+	ret = fi_writedata(ep, buf, size, fi_mr_desc(mr),
+		       cq_data, 0, remote.addr, remote.key, NULL);
+	if (ret) {
+		FT_PRINTERR("fi_writedata", ret);
+		return ret;
+	}
+	return 0;
+}
+
 static int write_data(size_t size)
 {
 	int ret;
@@ -169,6 +182,11 @@ static int run_test(void)
 	for (i = 0; i < opts.iterations; i++) {
 		if (op_type == FI_REMOTE_WRITE) {
 			ret = write_data(opts.transfer_size);
+		} else if (op_type == (FI_REMOTE_WRITE|FI_REMOTE_CQ_DATA)) {
+			ret = write_data_with_cq_data(opts.transfer_size, 0);
+			if (ret)
+				return ret;
+			ret = wait_for_completion(rcq, 1);
 		} else {
 			ret = read_data(opts.transfer_size); 
 		}
@@ -591,11 +609,14 @@ int main(int argc, char **argv)
 	while ((op = getopt(argc, argv, "ho:" CS_OPTS INFO_OPTS)) != -1) {
 		switch (op) {
 		case 'o':
-			if (!strcmp(optarg, "read"))
+			if (!strcmp(optarg, "read")) {
 				op_type = FI_REMOTE_READ;
-			else if (!strcmp(optarg, "write"))
+			} else if (!strcmp(optarg, "writedata")) {
+				/* FIXME: hack hack hack */
+				op_type = FI_REMOTE_WRITE|FI_REMOTE_CQ_DATA;
+			} else if (!strcmp(optarg, "write")) {
 				op_type = FI_REMOTE_WRITE;
-			else {
+			} else {
 				ft_csusage(argv[0], NULL);
 				fprintf(stderr, "  -o <op>\tselect operation type (read or write)\n");
 				return EXIT_FAILURE;
