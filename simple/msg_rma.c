@@ -41,7 +41,7 @@
 #include <rdma/fi_errno.h>
 #include <shared.h>
 
-static uint64_t op_type = FI_REMOTE_WRITE;
+static enum ft_rma_opcodes op_type = FT_RMA_WRITE;
 static struct cs_opts opts;
 static int max_credits = 128;
 static int credits = 128;
@@ -221,15 +221,19 @@ static int run_test(void)
 
 	clock_gettime(CLOCK_MONOTONIC, &start);
 	for (i = 0; i < opts.iterations; i++) {
-		if (op_type == FI_REMOTE_WRITE) {
+		switch (op_type) {
+		case FT_RMA_WRITE:
 			ret = write_data(opts.transfer_size);
-		} else if (op_type == (FI_REMOTE_WRITE|FI_REMOTE_CQ_DATA)) {
+			break;
+		case FT_RMA_WRITEDATA:
 			ret = write_data_with_cq_data(opts.transfer_size);
 			if (ret)
 				return ret;
 			ret = remote_writedata_completion();
-		} else {
+			break;
+		case FT_RMA_READ:
 			ret = read_data(opts.transfer_size); 
+			break;
 		}
 		if (ret)
 			return ret;
@@ -279,6 +283,7 @@ static void free_ep_res(void)
 static int alloc_ep_res(struct fi_info *fi)
 {
 	struct fi_cq_attr cq_attr;
+	uint64_t access_mode;
 	int ret;
 
 	buffer_size = !opts.custom ? test_size[TEST_CNT - 1].size : 
@@ -305,8 +310,20 @@ static int alloc_ep_res(struct fi_info *fi)
 		goto err2;
 	}
 	
+	switch (op_type) {
+	case FT_RMA_READ:
+		access_mode = FI_REMOTE_READ;
+		break;
+	case FT_RMA_WRITE:
+	case FT_RMA_WRITEDATA:
+		access_mode = FI_REMOTE_WRITE;
+		break;
+	default:
+		/* Impossible to reach here */
+		assert(0);
+	}
 	ret = fi_mr_reg(dom, buf, MAX(buffer_size, sizeof(uint64_t)), 
-			op_type, 0, 0, 0, &mr, NULL);
+			access_mode, 0, 0, 0, &mr, NULL);
 	if (ret) {
 		FT_PRINTERR("fi_mr_reg", ret);
 		goto err3;
@@ -651,12 +668,11 @@ int main(int argc, char **argv)
 		switch (op) {
 		case 'o':
 			if (!strcmp(optarg, "read")) {
-				op_type = FI_REMOTE_READ;
+				op_type = FT_RMA_READ;
 			} else if (!strcmp(optarg, "writedata")) {
-				/* FIXME: hack hack hack */
-				op_type = FI_REMOTE_WRITE|FI_REMOTE_CQ_DATA;
+				op_type = FT_RMA_WRITEDATA;
 			} else if (!strcmp(optarg, "write")) {
-				op_type = FI_REMOTE_WRITE;
+				op_type = FT_RMA_WRITE;
 			} else {
 				ft_csusage(argv[0], NULL);
 				fprintf(stderr, "  -o <op>\tselect operation type (read or write)\n");
@@ -680,6 +696,9 @@ int main(int argc, char **argv)
 
 	hints.ep_type = FI_EP_MSG;
 	hints.caps = FI_MSG | FI_RMA;
+	if (op_type == FT_RMA_WRITEDATA) {
+		hints.caps |= FI_REMOTE_CQ_DATA;
+	}
 	hints.mode = FI_LOCAL_MR | FI_PROV_MR_ATTR;
 	hints.addr_format = FI_SOCKADDR;
 

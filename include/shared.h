@@ -118,6 +118,14 @@ void show_perf_mr(int tsize, int iters, struct timespec *start,
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define ARRAY_SIZE(A) (sizeof(A)/sizeof(*A))
 
+/* for RMA tests --- we want to be able to select fi_writedata, but there is no
+ * constant in libfabric for this */
+enum ft_rma_opcodes {
+	FT_RMA_READ = 1,
+	FT_RMA_WRITE,
+	FT_RMA_WRITEDATA,
+};
+
 #ifdef __cplusplus
 }
 #endif
