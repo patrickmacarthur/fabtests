@@ -130,6 +130,7 @@ static int write_data_with_cq_data(size_t size, uint64_t cq_data)
 {
 	int ret;
 
+	FT_DEBUG("calling fi_writedata\n");
 	ret = fi_writedata(ep, buf, size, fi_mr_desc(mr),
 		       cq_data, 0, remote.addr, remote.key, NULL);
 	if (ret) {
@@ -186,6 +187,7 @@ static int run_test(void)
 			ret = write_data_with_cq_data(opts.transfer_size, 0);
 			if (ret)
 				return ret;
+			FT_DEBUG("wait for remote writedata completion\n");
 			ret = wait_for_completion(rcq, 1);
 		} else {
 			ret = read_data(opts.transfer_size); 
