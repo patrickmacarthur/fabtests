@@ -498,6 +498,10 @@ err0:
 
 static int run(void)
 {
+	struct fi_eq_cm_entry entry;
+	struct fi_eq_err_entry err;
+	uint32_t event;
+	ssize_t rd;
 	int i, ret = 0;
 
 	if (!opts.dst_addr) {
@@ -532,7 +536,37 @@ static int run(void)
 	/* Finalize before closing ep */
 	ft_finalize(ep, scq, rcq, FI_ADDR_UNSPEC);
 out:
-	fi_shutdown(ep, 0);
+	if (opts.dst_addr)
+		fi_shutdown(ep, 0);
+
+	rd = fi_eq_sread(cmeq, &event, &entry, sizeof entry, -1, 0);
+	if (rd != sizeof entry) {
+		if (rd == -FI_EAVAIL) {
+			rd = fi_eq_readerr(cmeq, &err, 0);
+			if (rd != sizeof(err)) {
+				FT_PRINTERR("fi_eq_sread", rd);
+			} else {
+				fprintf(stderr, "EQ report error %d %s\n", err.err,
+						fi_strerror(err.err));
+			}
+		} else {
+			FT_PRINTERR("fi_eq_sread", rd);
+		}
+		return (int) rd;
+	}
+
+	if (event == FI_SHUTDOWN && entry.fid == &ep->fid) {
+		fprintf(stderr, "Got CM event %d fid %p (ep %p)\n",
+			event, entry.fid, ep);
+	} else {
+		fprintf(stderr, "Unexpected CM event %d fid %p (ep %p)\n",
+			event, entry.fid, ep);
+		ret = -FI_EOTHER;
+	}
+
+	if (!opts.dst_addr)
+		fi_shutdown(ep, 0);
+
 	fi_close(&ep->fid);
 	free_ep_res();
 	if (!opts.dst_addr)
